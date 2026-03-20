@@ -47,10 +47,15 @@ class ListWidget : GlanceAppWidget() {
         provideContent {
             val tasks by repository.allTasks.collectAsState(initial = emptyList())
             val now = System.currentTimeMillis()
+            
+            // Logic: Completed tasks on top, then active tasks
+            val completedTasks = tasks.filter { it.done || it.endTime <= now }
+                .sortedByDescending { it.endTime }
+                .take(15)
             val activeTasks = tasks.filter { !it.done && it.endTime > now }
                 .sortedBy { it.endTime }
 
-            ListWidgetContent(activeTasks, now)
+            ListWidgetContent(completedTasks + activeTasks, now)
         }
     }
 }
@@ -60,7 +65,8 @@ private fun ListWidgetContent(tasks: List<UpgradeTask>, now: Long) {
     val bgColor = ColorProvider(R.color.bg_dark)
     val primaryColor = ColorProvider(R.color.primary)
     val successColor = ColorProvider(R.color.success)
-    val textColor = ColorProvider(android.R.color.white)
+    val textColor = ColorProvider(R.color.text)
+    val secondaryTextColor = ColorProvider(R.color.text_secondary)
     val cardColor = ColorProvider(R.color.bg_card)
     val darkColor = ColorProvider(R.color.bg_dark)
     val filterThKey = ActionParameters.Key<String>("filter_th")
@@ -114,12 +120,14 @@ private fun ListWidgetContent(tasks: List<UpgradeTask>, now: Long) {
 
         if (tasks.isEmpty()) {
             Box(modifier = GlanceModifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("All builders free!", style = TextStyle(color = textColor, fontSize = 12.sp))
+                Text("No tasks found", style = TextStyle(color = textColor, fontSize = 12.sp))
             }
         } else {
             LazyColumn(modifier = GlanceModifier.fillMaxSize()) {
                 items(tasks) { task ->
                     val tagSuffix = if (task.tag.isNotEmpty()) " (${task.tag})" else ""
+                    val isCompleted = task.done || task.endTime <= now
+                    
                     Row(
                         modifier = GlanceModifier
                             .fillMaxWidth()
@@ -134,7 +142,11 @@ private fun ListWidgetContent(tasks: List<UpgradeTask>, now: Long) {
                         Column(modifier = GlanceModifier.defaultWeight()) {
                             Text(
                                 text = "TH${task.th}$tagSuffix ${task.upgrade}",
-                                style = TextStyle(color = textColor, fontSize = 11.sp, fontWeight = FontWeight.Bold),
+                                style = TextStyle(
+                                    color = if (isCompleted) secondaryTextColor else textColor,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                ),
                                 maxLines = 1
                             )
                             if (task.level != null) {
@@ -145,8 +157,12 @@ private fun ListWidgetContent(tasks: List<UpgradeTask>, now: Long) {
                             }
                         }
                         Text(
-                            text = formatDurationFull(task.endTime - now),
-                            style = TextStyle(color = successColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            text = if (isCompleted) "✅" else formatDurationFull(task.endTime - now),
+                            style = TextStyle(
+                                color = successColor,
+                                fontSize = if (isCompleted) 14.sp else 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         )
                     }
                 }

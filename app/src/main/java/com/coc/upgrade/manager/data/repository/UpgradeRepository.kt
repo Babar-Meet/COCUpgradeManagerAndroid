@@ -4,6 +4,7 @@ import com.coc.upgrade.manager.data.local.PreferencesManager
 import com.coc.upgrade.manager.data.local.UpgradeTaskDao
 import com.coc.upgrade.manager.data.model.UpgradeTask
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -14,9 +15,15 @@ class UpgradeRepository @Inject constructor(
 ) {
     val allTasks: Flow<List<UpgradeTask>> = upgradeTaskDao.getAllTasks()
     
-    val totalCount: Flow<Int> = upgradeTaskDao.getTotalCount()
-    val completedCount: Flow<Int> = upgradeTaskDao.getCompletedCount()
-    val activeCount: Flow<Int> = upgradeTaskDao.getActiveCount()
+    val totalCount: Flow<Int> = allTasks.map { it.size }
+    val completedCount: Flow<Int> = allTasks.map { tasks ->
+        val now = System.currentTimeMillis()
+        tasks.count { it.done || it.endTime <= now }
+    }
+    val activeCount: Flow<Int> = allTasks.map { tasks ->
+        val now = System.currentTimeMillis()
+        tasks.count { !it.done && it.endTime > now }
+    }
     
     val playerTag: Flow<String> = preferencesManager.playerTag
     val inputMethod: Flow<String> = preferencesManager.inputMethod

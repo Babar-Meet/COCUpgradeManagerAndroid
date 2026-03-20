@@ -58,9 +58,9 @@ class UpgradeWidget : GlanceAppWidget() {
             val expandedTh = state[stringPreferencesKey("expanded_th")] ?: ""
             
             val now = System.currentTimeMillis()
-            val activeTasks = tasks.filter { !it.done && it.endTime > now }
             
-            val thGroups = activeTasks.groupBy { it.th }
+            // Group all tasks by TH
+            val thGroups = tasks.groupBy { it.th }
                 .toList()
                 .sortedBy { it.first.toIntOrNull() ?: Int.MAX_VALUE }
 
@@ -79,7 +79,8 @@ private fun UpgradeWidgetContent(
     val bgColor = ColorProvider(R.color.bg_dark)
     val primaryColor = ColorProvider(R.color.primary)
     val successColor = ColorProvider(R.color.success)
-    val textColor = ColorProvider(android.R.color.white)
+    val textColor = ColorProvider(R.color.text)
+    val secondaryTextColor = ColorProvider(R.color.text_secondary)
     val cardColor = ColorProvider(R.color.bg_card)
     val darkColor = ColorProvider(R.color.bg_dark)
 
@@ -135,14 +136,24 @@ private fun UpgradeWidgetContent(
 
         if (thGroups.isEmpty()) {
             Box(modifier = GlanceModifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No active upgrades", style = TextStyle(color = textColor, fontSize = 12.sp))
+                Text("No upgrades found", style = TextStyle(color = textColor, fontSize = 12.sp))
             }
         } else {
             LazyColumn(modifier = GlanceModifier.fillMaxSize()) {
-                items(thGroups) { (th, tasks) ->
+                items(thGroups) { (th, allTasksInGroup) ->
                     val isExpanded = expandedTh == th
-                    val nextTask = tasks.minBy { it.endTime }
                     
+                    val completedTasks = allTasksInGroup.filter { it.done || it.endTime <= now }
+                        .sortedByDescending { it.endTime }
+                    val activeTasks = allTasksInGroup.filter { !it.done && it.endTime > now }
+                        .sortedBy { it.endTime }
+                    
+                    val displayTasks = completedTasks + activeTasks
+                    if (displayTasks.isEmpty()) return@items
+
+                    val nextTask = displayTasks.first()
+                    val isGroupCompleted = activeTasks.isEmpty()
+
                     Column(
                         modifier = GlanceModifier
                             .fillMaxWidth()
@@ -154,15 +165,15 @@ private fun UpgradeWidgetContent(
                             ))
                     ) {
                         val tagSuffix = if (nextTask.tag.isNotEmpty()) "(${nextTask.tag})" else ""
-                        val durationText = formatDuration(nextTask.endTime - now)
+                        val statusText = if (isGroupCompleted) "✅" else formatDuration(nextTask.endTime - now)
                         
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = "Th$th$tagSuffix - $durationText",
+                                text = "Th$th$tagSuffix - $statusText",
                                 style = TextStyle(
-                                    color = primaryColor,
+                                    color = if (isGroupCompleted) secondaryTextColor else primaryColor,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp
+                                    fontSize = if (isGroupCompleted) 14.sp else 12.sp
                                 ),
                                 modifier = GlanceModifier.defaultWeight()
                             )
@@ -175,7 +186,8 @@ private fun UpgradeWidgetContent(
                         }
                         
                         if (isExpanded) {
-                            tasks.sortedBy { it.endTime }.forEach { task ->
+                            displayTasks.forEach { task ->
+                                val isTaskDone = task.done || task.endTime <= now
                                 Row(
                                     modifier = GlanceModifier
                                         .padding(top = 4.dp, start = 8.dp)
@@ -185,19 +197,29 @@ private fun UpgradeWidgetContent(
                                 ) {
                                     Text(
                                         task.upgrade + (if (task.level != null) " Lvl ${task.level}" else ""),
-                                        style = TextStyle(color = textColor, fontSize = 11.sp),
+                                        style = TextStyle(
+                                            color = if (isTaskDone) secondaryTextColor else textColor,
+                                            fontSize = 11.sp
+                                        ),
                                         modifier = GlanceModifier.defaultWeight()
                                     )
                                     Text(
-                                        formatDuration(task.endTime - now),
-                                        style = TextStyle(color = successColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        if (isTaskDone) "✅" else formatDuration(task.endTime - now),
+                                        style = TextStyle(
+                                            color = successColor, 
+                                            fontSize = if (isTaskDone) 14.sp else 10.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
                                     )
                                 }
                             }
                         } else {
                             Text(
                                 nextTask.upgrade + (if (nextTask.level != null) " Lvl ${nextTask.level}" else ""),
-                                style = TextStyle(color = textColor, fontSize = 11.sp),
+                                style = TextStyle(
+                                    color = if (isGroupCompleted) secondaryTextColor else textColor,
+                                    fontSize = 11.sp
+                                ),
                                 maxLines = 1
                             )
                         }
