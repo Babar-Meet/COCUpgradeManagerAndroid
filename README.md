@@ -24,15 +24,15 @@ Visit the releases page for all available versions:
 
 ### Step 1: Export Data from Game Press
 
-1. Open the **Clash of Clans Game Press** website on your device
-2. Navigate to your player profile
+1. Open the **Clash of Clans Game** website on your device
+2. Navigate to settings
 3. Find the **Copy** button on the page
 4. Click the Copy button to copy your player JSON data to clipboard
 
 ### Step 2: Import Data into the App
 
 1. Open the **COC Upgrade Manager** app on your Android device
-2. Look for the **Process** button in the app
+2. Look for the **JSON** and Press **Process from Clipboard** button in the app
 3. The app will automatically read the JSON data from your clipboard
 4. Your upgrades will be imported and displayed in the app
 
